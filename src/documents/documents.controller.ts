@@ -8,13 +8,13 @@ import {
   Query,
   UploadedFile,
   UseInterceptors,
-} from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { CreateDocumentDto } from './dto/create-document.dto';
-import { DocumentsService } from './documents.service';
-import { PdfParserService } from './pdf-parser.service';
+} from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { CreateDocumentDto } from "./dto/create-document.dto";
+import { DocumentsService } from "./documents.service";
+import { PdfParserService } from "./pdf-parser.service";
 
-@Controller('documents')
+@Controller("documents")
 export class DocumentsController {
   constructor(
     private readonly documentsService: DocumentsService,
@@ -23,50 +23,60 @@ export class DocumentsController {
 
   @Post()
   async create(@Body() dto: CreateDocumentDto) {
-    const title = (dto.title ?? dto.name)?.trim() || 'Untitled';
-    const file_name = dto.file_name?.trim() ?? '';
+    const title = (dto.title ?? dto.name)?.trim() || "Untitled";
+    const file_name = dto.file_name?.trim() ?? "";
     return this.documentsService.create(title, file_name, dto.pages ?? []);
   }
 
-  @Post('upload')
-  @UseInterceptors(FileInterceptor('file'))
+  @Post("upload")
+  @UseInterceptors(FileInterceptor("file"))
   async uploadPdf(
     @UploadedFile() file: Express.Multer.File,
-    @Body('name') name?: string,
+    @Body("name") name?: string,
   ) {
     if (!file?.buffer) {
-      throw new BadRequestException('Missing file. Send as multipart form with field "file".');
+      throw new BadRequestException(
+        'Missing file. Send as multipart form with field "file".',
+      );
     }
     const pages = await this.pdfParser.extractTextPerPage(file.buffer);
-    const title = (name && String(name).trim()) || file.originalname || 'Untitled';
-    const file_name = file.originalname || 'upload.pdf';
+    const title =
+      (name && String(name).trim()) || file.originalname || "Untitled";
+    const file_name = file.originalname || "upload.pdf";
     return this.documentsService.create(title, file_name, pages);
   }
 
-  @Get('search')
+  @Get("search")
   async search(
-    @Query('q') q: string,
-    @Query('limit') limit?: string,
-    @Query('rrf_k') rrf_k?: string,
-    @Query('fts_weight') fts_weight?: string,
-    @Query('fuzzy_weight') fuzzy_weight?: string,
+    @Query("q") q: string,
+    @Query("limit") limit?: string,
+    @Query("rrf_k") rrf_k?: string,
+    @Query("fuzzy_title_weight") fuzzyTitleWeight?: string,
+    @Query("fuzzy_content_weight") fuzzyContentWeight?: string,
+    @Query("fts_title_weight") ftsTitleWeight?: string,
+    @Query("fts_body_weight") ftsBodyWeight?: string,
   ) {
-    const parseNum = (s: string | undefined, parser: (s: string) => number): number | undefined => {
-      if (s == null || s === '') return undefined;
+    const parseNum = (
+      s: string | undefined,
+      parser: (s: string) => number,
+    ): number | undefined => {
+      if (s == null || s === "") return undefined;
       const n = parser(s);
       return Number.isFinite(n) ? n : undefined;
     };
     const opts = {
       match_count: parseNum(limit, (s) => parseInt(s, 10)),
       rrf_k: parseNum(rrf_k, (s) => parseInt(s, 10)),
-      fts_weight: parseNum(fts_weight, parseFloat),
-      fuzzy_weight: parseNum(fuzzy_weight, parseFloat),
+      fuzzy_title_weight: parseNum(fuzzyTitleWeight, parseFloat),
+      fuzzy_content_weight: parseNum(fuzzyContentWeight, parseFloat),
+      fts_title_weight: parseNum(ftsTitleWeight, parseFloat),
+      fts_body_weight: parseNum(ftsBodyWeight, parseFloat),
     };
-    return this.documentsService.search(q ?? '', opts);
+    return this.documentsService.search(q ?? "", opts);
   }
 
-  @Get(':id')
-  async findOne(@Param('id') id: string) {
+  @Get(":id")
+  async findOne(@Param("id") id: string) {
     return this.documentsService.findOne(id);
   }
 }
