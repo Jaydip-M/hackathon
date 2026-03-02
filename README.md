@@ -21,6 +21,8 @@ NestJS + PostgreSQL backend with raw SQL (no ORM). Parses and stores multi-page 
    PGPASSWORD=postgre psql -U jaydip -d test -c "DROP TABLE IF EXISTS document_chunks; DROP TABLE IF EXISTS content; DROP TABLE IF EXISTS documents;"
    PGPASSWORD=postgre psql -U jaydip -d test -f sql/001_init.sql
    ```
+   If you already had the schema and only need the fuzzy-search index on titles, run:  
+   `CREATE INDEX IF NOT EXISTS idx_chunks_doc_title_trgm ON document_chunks USING GIN (doc_title gin_trgm_ops);`
 
 3. **Environment**:
 
@@ -44,7 +46,7 @@ NestJS + PostgreSQL backend with raw SQL (no ORM). Parses and stores multi-page 
 |--------|------|-------------|
 | POST | `/documents` | Create document. Body: `{ "title": string, "file_name"?: string, "pages": string[] }`. One row in `document_chunks` per page. |
 | POST | `/documents/upload` | Upload a PDF. Multipart form: `file` (PDF), optional `name` (title). Parses each page and stores one chunk per page. |
-| GET | `/documents/search?q=...` | Full-text search with ranking (uses `fts_vector` with title weight A, content weight C). |
+| GET | `/documents/search?q=...` | Hybrid search: FTS (websearch_to_tsquery, ts_rank_cd) + fuzzy (pg_trgm on doc_title), merged with RRF. Optional: `limit`, `rrf_k`, `fts_weight`, `fuzzy_weight`. Returns `combined_rank` and `rankings` (debug) per hit. |
 | GET | `/documents/:id` | Get document metadata and all chunks (by `page_number`). |
 
 ## Example
@@ -60,8 +62,9 @@ curl -X POST http://localhost:3000/documents/upload \
   -F "file=@/path/to/document.pdf" \
   -F "name=My PDF"
 
-# Search
+# Search (optional: limit, rrf_k, fts_weight, fuzzy_weight)
 curl "http://localhost:3000/documents/search?q=keywords"
+curl "http://localhost:3000/documents/search?q=keywords&limit=10&fts_weight=0.7&fuzzy_weight=0.3"
 ```
 # hackathon
 # hackathon

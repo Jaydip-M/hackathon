@@ -44,8 +44,25 @@ export class DocumentsController {
   }
 
   @Get('search')
-  async search(@Query('q') q: string) {
-    return this.documentsService.search(q ?? '');
+  async search(
+    @Query('q') q: string,
+    @Query('limit') limit?: string,
+    @Query('rrf_k') rrf_k?: string,
+    @Query('fts_weight') fts_weight?: string,
+    @Query('fuzzy_weight') fuzzy_weight?: string,
+  ) {
+    const parseNum = (s: string | undefined, parser: (s: string) => number): number | undefined => {
+      if (s == null || s === '') return undefined;
+      const n = parser(s);
+      return Number.isFinite(n) ? n : undefined;
+    };
+    const opts = {
+      match_count: parseNum(limit, (s) => parseInt(s, 10)),
+      rrf_k: parseNum(rrf_k, (s) => parseInt(s, 10)),
+      fts_weight: parseNum(fts_weight, parseFloat),
+      fuzzy_weight: parseNum(fuzzy_weight, parseFloat),
+    };
+    return this.documentsService.search(q ?? '', opts);
   }
 
   @Get(':id')

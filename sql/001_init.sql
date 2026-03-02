@@ -31,6 +31,7 @@ CREATE TABLE document_chunks (
 -- Indexes
 CREATE INDEX idx_chunks_fts    ON document_chunks USING GIN (fts_vector);
 CREATE INDEX idx_chunks_trgm   ON document_chunks USING GIN (content gin_trgm_ops);
+CREATE INDEX idx_chunks_doc_title_trgm ON document_chunks USING GIN (doc_title gin_trgm_ops);
 CREATE INDEX idx_chunks_doc_id ON document_chunks (document_id);
 
 -- BM25 (optional: requires ParadeDB extension; comment out if not installed)
